@@ -5,53 +5,74 @@ from utils.cache_handler import get_cached_content, save_content_to_cache
 from database import save_version, get_latest_version_info, inspect_all_versions
 from search import find_final_version, semantic_search_versions
 
-
+# --- Configuration Constants ---
 CONFIG = Config()
 URL = CONFIG.url
 CONTENT_SELECTOR = CONFIG.content_selector
 CHAPTER_ID = "gates_of_morning_ch1" 
 
-# This script is designed to manage the workflow of an AI-assisted book writing process.
+# --- Helper Functions for User Interaction ---
+
 def handle_spin_cycle(original_text: str, current_text: str, current_version_num: int):
-    """Manages a single "spin" cycle and returns the new state."""
+    """
+    Manages a complete, iterative "spin" cycle: AI generation, review,
+    and a continuous human decision loop for a single draft.
+    """
     print("\n--- Generating new AI draft... ---")
     spun_text = ai_writer_spin_chapter(current_text)
     current_version_num += 1
     save_version(chapter_id=CHAPTER_ID, version_num=current_version_num, status="ai_draft", text=spun_text)
     
-    review_text = ai_reviewer_critique(original_text, spun_text)
-    
-    print("\n" + "="*50)
-    print(f"---  REVIEW OF DRAFT v{current_version_num} ---")
-    print(f"\n---  AI REVIEWER'S FEEDBACK ---\n{review_text}")
-    print(f"\n---  AI WRITER'S DRAFT ---\n{spun_text}")
-    print("="*50 + "\n")
+    while True: 
+        review_text = ai_reviewer_critique(original_text, spun_text)
 
-    print("--- HUMAN ACTION REQUIRED ---")
-    print("First, as a REVIEWER, assess the AI's critique.")
-    human_review_feedback = input("--> Do you agree with the review? (Press Enter to accept, or type concerns): ").strip()
-    
-    print("\nNow, as an EDITOR, provide creative direction.")
-    human_editor_feedback = input("--> Your command: [approve], [retry], or provide feedback for the writer: ").strip().lower()
+        print("\n" + "="*60)
+        print(f"---  REVIEW OF DRAFT v{current_version_num} ---")
+        print("\n---  AI REVIEWER'S FEEDBACK ---\n" + review_text)
+        print("\n---  AI WRITER'S DRAFT ---\n" + spun_text)
+        print("="*60 + "\n")
 
-    if human_editor_feedback == 'approve':
-        save_version(chapter_id=CHAPTER_ID, version_num=current_version_num, status="approved", text=spun_text)
-        print("\n---  Chapter Approved! Final version saved. ---")
-        return spun_text, current_version_num # Return the approved state
-    
-    elif human_editor_feedback == 'retry':
-        print("\n---  discarding current draft. Using previous version for next spin... ---")
-        # Return the original text and decremented version number to retry
-        return current_text, current_version_num - 1
-    
-    else:
-        combined_feedback = f"Editor's creative direction: '{human_editor_feedback}'."
-        if human_review_feedback:
-            combined_feedback += f" Also, please address this meta-concern about the review: '{human_review_feedback}'."
+        # --- THE DECISION POINT MENU ---
+        print("What is your next action for this draft?")
+        print("  [1] Approve this version as final.")
+        print("  [2] Refine this draft with new feedback.")
+        print("  [3] Discard this draft and re-spin from the previous version.")
+        print("  [4] Save this draft and return to the main menu.")
         
-        print("\n--- Sending combined human feedback to AI Writer for refinement... ---")
-        # Return the newly refined text as the new 'current_text'
-        return ai_writer_spin_with_feedback(spun_text, combined_feedback), current_version_num
+        choice = input(" Enter your choice (1-4): ").strip()
+
+        # --- DECISION LOGIC ---
+        if choice == '1': # Approve
+            save_version(chapter_id=CHAPTER_ID, version_num=current_version_num, status="approved", text=spun_text)
+            print("\n--- ✅ Chapter Approved! Final version status updated in DB. ---")
+            return spun_text, current_version_num
+
+        elif choice == '2': # Refine
+            feedback = input(" Provide your feedback for the writer: ").strip()
+            if not feedback:
+                print("--- No feedback provided. Please try again. ---")
+                continue
+            print("\n--- Sending feedback to AI Writer for refinement... ---")
+            refined_text = ai_writer_spin_with_feedback(spun_text, feedback)
+            
+            # The refined text becomes the new 'spun_text' to be reviewed in the next loop.
+            spun_text = refined_text 
+            current_version_num += 1
+            save_version(chapter_id=CHAPTER_ID, version_num=current_version_num, status="human_edited_draft", text=spun_text)
+            
+            continue
+
+        elif choice == '3': # Discard and Retry
+            print("\n---  Discarding current draft. You are back at the main menu. ---")
+            print("--- Type 'spin' again to generate a new draft from the previous version. ---")
+            return current_text, current_version_num - 1
+
+        elif choice == '4': # Return to main menu
+            print("\n--- Current draft saved. Returning to main menu. ---")
+            return spun_text, current_version_num
+
+        else:
+            print("--- Invalid choice. Please enter a number between 1 and 4. ---")
 
 def handle_search():
     """Manages the search functionality submenu."""
@@ -66,7 +87,7 @@ def handle_search():
     elif search_type == 'semantic':
         query = input("Enter your search query (e.g., 'a description of the morning room'): ")
         search_results = semantic_search_versions(CHAPTER_ID, query)
-        if search_results and search_results['documents']:
+        if search_results and search_results.get('documents'):
             print("\n--- Top Semantic Search Results ---")
             for i, doc in enumerate(search_results['documents'][0]):
                 meta = search_results['metadatas'][0][i]
@@ -76,8 +97,8 @@ def handle_search():
     else:
         print("Invalid search type.")
 
-
 # --- Main Application Workflow ---
+
 def main():
     """The main entry point and interactive loop for the application."""
     print(f"--- Initializing content for URL: {URL} ---")
@@ -85,17 +106,18 @@ def main():
     if not original_text or "FAILED" in original_text:
         print("CRITICAL: Halting workflow due to scraping failure.")
         return
-    save_content_to_cache(URL, original_text) # Ensure cache is always updated
+    save_content_to_cache(URL, original_text)
     
     save_version(chapter_id=CHAPTER_ID, version_num=0, status="original", text=original_text)
     
     current_text, current_version_num = get_latest_version_info(chapter_id=CHAPTER_ID)
     
     print("\n" + "="*50)
-    print(" Automated Book Workflow is Ready ")
+    print("🚀 Automated Book Workflow is Ready 🚀")
     print(f"Loaded Chapter: '{CHAPTER_ID}', starting at Version {current_version_num}")
     print("="*50)
 
+    # The main loop now only manages high-level commands.
     while True:
         print("\nAvailable Commands: [spin], [search], [inspect], [exit]")
         command = input("➡️ Your command: ").lower().strip()

@@ -3,6 +3,7 @@
 <!-- [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/Python-3.12%2B-blue.svg?style=flat-square&logo=python)](https://www.python.org/)
+[![YouTube Demo](https://img.shields.io/badge/YouTube-Demo-blue?style=flat-square&logo=youtube)](https://youtu.be/Rt3C6aTqe2U)
 
 A proof-of-concept system demonstrating an automated, multi-agent pipeline for content generation and versioning. This project showcases how AI agents, human-in-the-loop feedback, and a vector database can be combined to create a sophisticated content workflow.
 
