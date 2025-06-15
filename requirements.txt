@@ -1,0 +1,7 @@
+playwright
+beautifulsoup4
+google-generativeai
+python-dotenv
+chromadb
+sentence-transformers
+pandas
