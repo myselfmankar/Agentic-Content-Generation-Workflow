@@ -11,8 +11,7 @@ URL = CONFIG.url
 CONTENT_SELECTOR = CONFIG.content_selector
 CHAPTER_ID = "gates_of_morning_ch1" 
 
-
-
+# This script is designed to manage the workflow of an AI-assisted book writing process.
 def handle_spin_cycle(original_text: str, current_text: str, current_version_num: int):
     """Manages a single "spin" cycle and returns the new state."""
     print("\n--- Generating new AI draft... ---")
