@@ -7,7 +7,7 @@
 
 A proof-of-concept system demonstrating an automated, multi-agent pipeline for content generation and versioning. This project showcases how AI agents, human-in-the-loop feedback, and a vector database can be combined to create a sophisticated content workflow.
 
-![Workflow Diagram](assets/workflow_diagram.png)
+<!-- ![Workflow Diagram](assets/workflow_diagram.png) -->
 
 ## Core Features
 
